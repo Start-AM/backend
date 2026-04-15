@@ -11,8 +11,16 @@ dotenv.config({ path: "./.env" });     // Load environment variables from a .env
 
 connectDB()
 
+.then(() => {
+    app.listen(process.env.PORT || 8000, () => { // Start the server and listen on the specified port
+        console.log(`Server is running on port : ${process.env.PORT || 8000}`);    // Log a message to the console when the server is successfully started
+    })
+})
 
-
+.catch((err) => {
+    console.log("MONGO db CONNECTION ERROR !!! ", err); // Log the error and rethrow it to be handled by the caller
+}
+)
 
 
 /*  // this our frist approach.
