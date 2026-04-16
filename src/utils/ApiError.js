@@ -12,7 +12,7 @@ class ApiError extends Error {
         this.success = false;                    // Set the success property to false for the error
         this.error = error;                        // Set the error array for the error
        
-            if (statck) {
+            if (stack) {
                 this.stack = stack; // Set the stack trace for the error
             }
             else {
