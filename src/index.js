@@ -11,8 +11,8 @@ const { app } = await import("./app.js");
 
 connectDB()
     .then(() => {
-        app.listen(process.env.PORT || 8000, () => {
-            console.log(`Server is running on port : ${process.env.PORT || 8000}`);
+        app.listen(process.env.PORT || 9000, () => {
+            console.log(`Server is running on port : ${process.env.PORT || 9000}`);
         });
     })
     .catch((err) => {
