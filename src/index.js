@@ -1,26 +1,23 @@
-// require ("dotenv").config( {path: "./.env"});     // Load environment variables from a .env file into process.env
-
+import dotenv from "dotenv";
 import dns from 'node:dns';
+
+
+dotenv.config({ path: "./.env" });
 
 dns.setServers(['8.8.8.8', '8.8.4.4']);
 
-import dotenv from "dotenv";     // Import the dotenv package to load environment variables from a .env file
 import connectDB from "./db/index.js";
-
-dotenv.config({ path: "./.env" });     // Load environment variables from a .env file into process.env
+const { app } = await import("./app.js");
 
 connectDB()
-
-.then(() => {
-    app.listen(process.env.PORT || 8000, () => { // Start the server and listen on the specified port
-        console.log(`Server is running on port : ${process.env.PORT || 8000}`);    // Log a message to the console when the server is successfully started
+    .then(() => {
+        app.listen(process.env.PORT || 8000, () => {
+            console.log(`Server is running on port : ${process.env.PORT || 8000}`);
+        });
     })
-})
-
-.catch((err) => {
-    console.log("MONGO db CONNECTION ERROR !!! ", err); // Log the error and rethrow it to be handled by the caller
-}
-)
+    .catch((err) => {
+        console.log("MONGO db CONNECTION ERROR !!! ", err);
+    });
 
 
 /*  // this our frist approach.

@@ -3,7 +3,7 @@ class ApiError extends Error {
         statusCode,
         message = "Something went wrong",
         error = [],
-        statck = ""
+        stack = ""
     ) {
         super(message);                       // Call the parent class constructor with the error message
         this.statusCode = statusCode;           // Set the status code for the error
