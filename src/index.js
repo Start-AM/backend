@@ -7,12 +7,23 @@ dotenv.config({ path: "./.env" });
 dns.setServers(['8.8.8.8', '8.8.4.4']);
 
 import connectDB from "./db/index.js";
-const { app } = await import("./app.js");
+
+let app;
+try {
+    const appModule = await import("./app.js");
+    app = appModule.app;
+    console.log("✅ App module imported successfully", app ? "app is defined" : "app is undefined");
+} catch (importError) {
+    console.error("❌ Error importing app module:", importError);
+}
 
 connectDB()
     .then(() => {
-        app.listen(process.env.PORT || 9000, () => {
-            console.log(`Server is running on port : ${process.env.PORT || 9000}`);
+        if (!app) {
+            throw new Error("App is not defined after import");
+        }
+        app.listen(process.env.PORT || 8000, () => {
+            console.log(`Server is running on port : ${process.env.PORT || 8000}`);
         });
     })
     .catch((err) => {
@@ -35,8 +46,8 @@ const app = express();          // Create an instance of the Express application
 
         });
 
-        app.listen(process.env.PORT, () => {   // Start the server and listen on the specified port
-            console.log(`Server is running on port ${process.env.PORT}`);    // Log a message to the console when the server is successfully started
+        app.listen(process.env.PORT || 8000, () => {   // Start the server and listen on the specified port
+            console.log(`Server is running on port ${process.env.PORT || 8000}`);    // Log a message to the console when the server is successfully started
         });
 
     } catch (error) {      // Handle connection errors

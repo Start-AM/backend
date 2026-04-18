@@ -1,5 +1,6 @@
 import {v2 as cloudinary} from 'cloudinary';
 import fs from 'fs';
+import path from 'path';
 
 cloudinary.config({
     cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
@@ -8,22 +9,32 @@ cloudinary.config({
 });
 
 const uploadOnCloudinary = async (localFilePath) => {
+    const absoluteFilePath = path.isAbsolute(localFilePath)
+    ? localFilePath 
+    :path.resolve(localFilePath)
+
     try {
-        if (!localFilePath) return null;
-// Upload the image to Cloudinary
-        const response = await cloudinary.uploader.upload(localFilePath,{
+        if (!absoluteFilePath) return null;
+
+        const response = await cloudinary.uploader.upload(absoluteFilePath, {
             resource_type: 'auto'
         });
 
-        //file has been uploaded successfully
         console.log('File uploaded to Cloudinary:');
         return response;
+    } catch (error) {
+        console.error('[Cloudinary upload error]', error);
 
-    }
-    catch (error) {
-        fs.unlinkSync(localFilePath);// Delete the local file
+        if (fs.existsSync(absoluteFilePath)) {
+            try {
+                fs.unlinkSync(absoluteFilePath);
+            } catch (unlinkError) {
+                console.warn('Failed to delete local file:', unlinkError.message);
+            }
+        }
+
         return null;
     }
-        
-}          
+};
+
 export {uploadOnCloudinary}
