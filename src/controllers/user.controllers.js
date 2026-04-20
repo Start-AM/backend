@@ -9,11 +9,16 @@ import mongoose from "mongoose";
 const generateAccessAndRefreshTokens = async (userId) => {
     try {
         const user = await User.findById(userId)
-        const accessToken = await user.generateAccessToken()
-        const refreshToken = await user.generateRefreshToken()
+
+        if (!user) {
+            throw new ApiError(404, "User not found")
+        }
+
+        const accessToken = user.generateAccessToken()
+        const refreshToken = user.generateRefreshToken()
 
         user.refreshToken = refreshToken
-        user.save({ validateBeforeSave: false })
+        await user.save({ validateBeforeSave: false })
 
         return { accessToken, refreshToken }
     }
@@ -112,10 +117,9 @@ const loginUser = asyncHandler (async (req, res) => {
     
 
     const { username , email, password } = req.body
-    console.log(email )
 
-    if (!username && !email) {
-        throw new ApiError(400, "Username, email, and password are required")
+    if ((!username && !email) || !password) {
+        throw new ApiError(400, "Username or email and password are required")
     }
 
     // Here is an alternative of above code based on logic discussed
@@ -144,7 +148,7 @@ const loginUser = asyncHandler (async (req, res) => {
 
     const options ={
         httpOnly: true,
-        secure: true
+        secure: process.env.NODE_ENV === "production"
     }
 
     return res
@@ -169,11 +173,11 @@ const logoutUser = asyncHandler (async (req, res) => {
     // remove refresh token from database
     // clear cookies
 
-    User.findByIdAndUpdate(
+    await User.findByIdAndUpdate(
         req.user._id, 
         {
-            $set: {
-                refreshToken: undefined 
+            $unset: {
+                refreshToken: 1
             } 
         },
         {
@@ -183,7 +187,7 @@ const logoutUser = asyncHandler (async (req, res) => {
 
     const options ={
         httpOnly: true,
-        secure: true
+        secure: process.env.NODE_ENV === "production"
     }
 
     return res
@@ -218,20 +222,20 @@ const refreshAccessToken = asyncHandler (async (req, res) => {
         }
         const options ={
             httpOnly: true,
-            secure: true
+            secure: process.env.NODE_ENV === "production"
         }
     
-        const { accessToken, newRefreshToken } = await generateAccessAndRefreshTokens(user._id)
+        const { accessToken, refreshToken } = await generateAccessAndRefreshTokens(user._id)
     
         return res
         .status(200)
         .cookie("accessToken", accessToken, options)
-        .cookie("refreshToken", newRefreshToken, options)
+        .cookie("refreshToken", refreshToken, options)
         .json(
             new ApiResponse(
                 200,
                  {
-                   accessToken, refreshToken: newRefreshToken
+                   accessToken, refreshToken
                  }, 
                  "Access token refreshed successfully"
                 )
@@ -247,6 +251,11 @@ const changeCurrentPassword = asyncHandler (async (req,res) => {
     const { oldPassword, newPassword } = req.body
 
     const user = await User.findById(req.user?._id)
+
+    if (!user) {
+        throw new ApiError(404, "User not found")
+    }
+
     const isPasswordcorrect = await user.isPasswordCorrect(oldPassword)
 
     if (!isPasswordcorrect) {
@@ -254,7 +263,7 @@ const changeCurrentPassword = asyncHandler (async (req,res) => {
     }
 
     user.password = newPassword
-    await user.save(validateBeforeSave = false)
+    await user.save({ validateBeforeSave: false })
 
     return res.status(200).json(new ApiResponse(200, {}, "Password changed successfully"))
 
@@ -268,19 +277,20 @@ const getCurrentUser = asyncHandler (async (req, res) => {
 })
 
 const updateUserProfile = asyncHandler (async (req, res) => {
-    const {email, fullName } = req.body
+    const { email, fullName } = req.body
 
-    if (!email || !fullName) {
+    const updates = {}
+    if (email) updates.email = email
+    if (fullName) updates.fullName = fullName
+
+    if (!Object.keys(updates).length) {
         throw new ApiError(400, "At least one field is required")
     }
 
     const user = await User.findByIdAndUpdate(
         req.user._id, 
         {
-            $set: {
-                email,
-                fullName
-            }
+            $set: updates
         },
         {
             new: true
@@ -288,7 +298,6 @@ const updateUserProfile = asyncHandler (async (req, res) => {
     ).select("-password")
 
     return res.status(200).json(new ApiResponse(200, user, "User profile updated successfully"))
-
 
 })
 
@@ -411,7 +420,7 @@ const getUserChannelProfile = asyncHandler (async (req, res) => {
 
             }
         }
-    ]).select("-password")
+    ])
 
     if (!channel?.length) {
         throw new ApiError(404, "Channel not found")
@@ -457,7 +466,7 @@ const getWatchHistory = asyncHandler (async (req, res) => {
                     {
                         $addFields: {
                             owner: {
-                                $first: ["$ownerDetails", null]
+                                $first: "$ownerDetails"
                             }
                         }
                     }
@@ -466,7 +475,11 @@ const getWatchHistory = asyncHandler (async (req, res) => {
         }
     ])
 
-    return res.status(200).json(new ApiResponse(200, user[0].watchHistory, "User watch history retrieved successfully"))
+    if (!user?.length) {
+        throw new ApiError(404, "User not found")
+    }
+
+    return res.status(200).json(new ApiResponse(200, user[0].watchHistory || [], "User watch history retrieved successfully"))
 })
 
 export {
@@ -480,6 +493,5 @@ export {
     updateUserAvatar,
     updateUserCoverImage,
     getUserChannelProfile,
-    getWatchHistory,
-    
+    getWatchHistory
 }
